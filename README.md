@@ -1,2 +1,3 @@
-# TopDownShooter
- A top down single player shooter game
+A top down single player shooter game
+
+Ilie Dumitru
