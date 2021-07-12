@@ -10,10 +10,18 @@ struct button
     void *img;
 };
 
-int MAXH=600, MAXW=600, HEALTHHEIGHT=20, spawnRate=200;
+//Modify these values if you want the game to look different
+int MAXH=600, MAXW=600, HEALTHHEIGHT=20;
+//Increase this value to spawn fewer enemies and decrease it to spawn more
+int spawnRate=200;
+//Increase this value to allow more enemies to be in the game at once
+const int maxEnemy=20;
+
+inline int min(int a, int b) {return a+(b-a)*(b<a);}
+inline int max(int a, int b) {return a+(b-a)*(b>a);}
 
 persoana om;
-const int maxEnemy=20;
+int score, killCount;
 enemy vect[maxEnemy];
 const int startGame=time(NULL);
 int bonus=0, nrE=0, state=0;
@@ -37,9 +45,13 @@ void simEnemy()
 
 void addEnemy()
 {
-    vect[nrE].x=rand()%MAXW;
-    vect[nrE].y=rand()%MAXH;
-    vect[nrE].speedPerSec=double(time(NULL)-startGame)/100+0.05;
+    do
+    {
+        vect[nrE].x=rand()%MAXW;
+        vect[nrE].y=rand()%MAXH;
+    }while((vect[nrE].y-om.y)*(vect[nrE].y-om.y)+(vect[nrE].x-om.x)*(vect[nrE].x-om.x)<=2500/*50*50*/);
+    //enemies won't spawn too close to the player, allowing him/her to see and shoot it
+    vect[nrE].speedPerSec=((double)(time(NULL)-startGame))/100+0.05;
     vect[nrE].DMGP=(time(NULL)-startGame)/30+1;
     vect[nrE].cooldown=240/(time(NULL)-startGame+1)+4;
     vect[nrE].trecut=0;
@@ -54,8 +66,6 @@ void afisareE()
 
 bool isPressed(int key) {return GetKeyState(key) & 0x80000;}
 
-inline int sgn(double x) {return (x>0)-(x<0);}
-
 void simShoot()
 {
     double p2e, c=cos(om.angle), s=sin(om.angle);
@@ -63,8 +73,10 @@ void simShoot()
     for(i=0;i<nrE;++i)
     {
         p2e=abs(s*(vect[i].x-om.x)-c*(vect[i].y-om.y));
-        if(p2e<=4)
+        if(p2e<=4 && (vect[i].x-om.x)*c>=0 && s*(vect[i].y-om.y)>=0)
         {
+            score+=max(1, min((vect[i].speedPerSec-0.05)*5/3, 10));
+            ++killCount;
             for(j=1+i;j<nrE;++j)
                 vect[j-1]=vect[j];
             --nrE;
@@ -121,9 +133,9 @@ void pauseMenu()
 int main()
 {
     preload();
-    bool wait=false, done=false;
+    bool wait=false, done=false, lastPressedLeft=true;
     int moveDir, normDir;
-    srand(time(NULL)%10000);
+    srand(time(NULL));
     om.HEALTHHEIGHT=HEALTHHEIGHT=30;
     om.MAXH=MAXH;
     om.MAXW=MAXW;
@@ -141,20 +153,19 @@ int main()
     while(om.HP>0 && !done)
     {
         cleardevice();
-        if(GetKeyState(VK_ESCAPE)&0x80000)
-        {
-            if(wait)
-                state=3-state;
-            wait=false;
-        }
-        else
-            wait=true;
         if(state==-1)
             done=true;
         else if(state==0)//Main menu
             mainMenu();
         else if(state==1)//Playing game
         {
+            setcolor(COLOR(255, 255, 255));
+            char scoreText[15];
+            sprintf(scoreText, "Kills: %d", killCount);
+            int scoreTextHeight=textheight(scoreText);
+            outtextxy(5, 5+(scoreTextHeight>>1), scoreText);
+            sprintf(scoreText, "Score: %d", score);
+            outtextxy(5, 5+scoreTextHeight+(textheight(scoreText)>>1), scoreText);
             setcolor(COLOR(0, 0, 0));
             setlinestyle(0, 0, 1);
             om.rotate(atan2(mousey()-om.y, mousex()-om.x));
@@ -167,13 +178,22 @@ int main()
             afisareE();
             if(rand()%spawnRate==0 && nrE<maxEnemy)
                 addEnemy();
-            if(isPressed(VK_LBUTTON) && om.trecut<=0)
+            if(isPressed(VK_LBUTTON) && !lastPressedLeft && om.trecut<=0)
                 simShoot();
             else if(om.trecut>0)
                 om.trecut-=0.05;
             om.show();
+            lastPressedLeft=isPressed(VK_LBUTTON);
+            if(GetKeyState(VK_ESCAPE)&0x80000)
+            {
+                if(wait)
+                    state=3-state;
+                wait=false;
+            }
+            else
+                wait=true;
         }
-        else if(state==2)
+        else if(state==2)//Pause
             pauseMenu();
         swapbuffers();
     }

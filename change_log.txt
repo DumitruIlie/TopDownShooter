@@ -1,0 +1,11 @@
+Version 12072021:
+
+-Added a kill count and scoring system
+
+-Changed the weapon to shoot at the left button press only(no longer shoots automatic)
+
+-Changed the enemies so they can't spawn next to the player giving the player some time to kill them
+
+-Fixed bug when player would shoot immediately as the game began or when it got resumed through unpause button
+
+-Fixed bug making the player able to shoot enemies behind him/her
